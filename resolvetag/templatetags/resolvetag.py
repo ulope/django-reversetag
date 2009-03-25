@@ -87,17 +87,20 @@ class PartialResolveNode(Node):
             context[self.asvar] = self
             return ''
         else:
-            raise TemplateSyntaxError("When using 'partial' '%s' requires"
-                                      " (as varname) argument" % bits[0])
+            raise TemplateSyntaxError("When using 'partial' the 'resolve' tag"
+                                      " requires 'as varname' argument")
 
     def __unicode__(self):
-        # don't output partialy resolved urls
+        # don't output partially resolved urls
         if settings.TEMPLATE_DEBUG:
-            return "[Cannot render partialy resolved url for view: %s " \
-                   "with args %s and kwargs %s. You have to use it through " \
-                   "the 'resolve' tag.]" % (self.view, self.args, self.kwargs)
+            return "[Cannot render: %s. You have to use it through " \
+                   "the 'resolve' tag.]" % repr(self)
         else:
             return '' # fail silently
+
+    def __repr__(self):
+        return "Partialy resolved url for view: %s with args %s " \
+               "and kwargs %s" % (self.view, self.args, self.kwargs)
 
 @register.tag
 def resolve(parser, token):
