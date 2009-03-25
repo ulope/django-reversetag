@@ -6,7 +6,7 @@ register = Library()
 
 def _merge(view, args, kwargs):
     """Merge arguments with PartialResolveNode's"""
-    # If view is a PartialResolveNode update this one with its args and kwargs
+    # If view is a PartialResolveNode update arguments with its args and kwargs
     if isinstance(view, PartialResolveNode):
         args_ = view.args[:]
         args_.extend(args)
@@ -64,8 +64,9 @@ class ResolveNode(Node):
 
 
 class PartialResolveNode(Node):
+    """Represents a partial to-be-resolved url"""
     def __init__(self, view, args, kwargs, asvar):
-        # Store in "private" attributes so we can re-resolve in loops
+        # Store in "private" attributes so we can re-resolve variables in loops
         self._view = view
         self._args = args
         self._kwargs = kwargs
