@@ -43,18 +43,20 @@ class ResolveNode(Node):
         # Try to look up the URL twice: once given the view name, and again
         # relative to what we guess is the "main" app. If they both fail, 
         # re-raise the NoReverseMatch unless we're using the 
-        # {% url ... as var %} construct in which cause return nothing.
+        # {% resolve ... as var %} construct in which cause return nothing.
         url = ''
         try:
             url = reverse(view, args=args, kwargs=kwargs)
-        except NoReverseMatch:
+        except NoReverseMatch, exc:
             project_name = settings.SETTINGS_MODULE.split('.')[0]
             try:
                 url = reverse(project_name + '.' + view,
                               args=args, kwargs=kwargs)
             except NoReverseMatch:
                 if self.asvar is None:
-                    raise
+                    # reraise the original NoReverseMatch since the above is 
+                    # just a (failed, if we reach here) attempt to fix things.
+                    raise exc
                     
         if self.asvar:
             context[self.asvar] = url
