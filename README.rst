@@ -22,8 +22,8 @@ Installation
 TODO: add setup.py
 
 To use resolvetag in your Django project it needs to be accessible by your 
-Python installation. The simplest way to achieve that is by putting the 
-``resolvetag`` folder into your Python installation's ``site-packages`` 
+Python installation. The simplest way to achieve that is by putting the
+``resolvetag`` directory into your Python installation's ``site-packages``
 directory.
 
 Then all that is left to do is adding ``resolvetag`` to ``INSTALLED_APPS`` in 
