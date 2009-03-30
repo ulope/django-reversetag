@@ -30,12 +30,15 @@ class ResolveNode(Node):
     
     def render(self, context):
         view = self.view.resolve(context)
-        args = self.args
-        kwargs = self.kwargs
-
-        args = [arg.resolve(context) for arg in args]
+        args = [arg.resolve(context) for arg in self.args]
         kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
-                       for k, v in kwargs.items()])
+                       for k, v in self.kwargs.items()])
+
+        if not view:
+            # variable not in context
+            if settings.TEMPLATE_DEBUG:
+                return "[Missing %r. Cannot resolve.]" % self.view.var
+            return ""
 
         view, args, kwargs = _merge(view, args, kwargs)
 
@@ -63,6 +66,10 @@ class ResolveNode(Node):
             return ''
         else:
             return url
+    
+    def __repr__(self):
+        return "<ResolveNode: resolve %r with args %r and kwargs %r>" % \
+            (self.view.var, (a.var for a in self.args), dict((k,v.var) for k,v in self.kwargs.iteritems()))
 
 
 class PartialResolveNode(Node):
@@ -81,6 +88,12 @@ class PartialResolveNode(Node):
         self.kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
                             for k, v in self._kwargs.items()])
 
+        if not self.view:
+            # variable not in context
+            if settings.TEMPLATE_DEBUG:
+                return "[Missing %r. Cannot resolve.]" % self.view
+            return ""
+
         self.view, self.args, self.kwargs = _merge(self.view, self.args, self.kwargs)
         
         if self.asvar:
@@ -93,14 +106,14 @@ class PartialResolveNode(Node):
     def __unicode__(self):
         # don't output partially resolved urls
         if settings.TEMPLATE_DEBUG:
-            return "[Cannot render: %s. You have to use it through " \
-                   "the 'resolve' tag.]" % repr(self)
+            return "[Cannot render: %r. You have to use it through " \
+                   "the 'resolve' tag.]" % self
         else:
             return '' # fail silently
 
     def __repr__(self):
-        return "Partialy resolved url for view: %s with args %s " \
-               "and kwargs %s" % (self.view, self.args, self.kwargs)
+        return "<PartialResolveNode: resolve %r with args %r " \
+               "and kwargs %r>" % (self._view.var, (a.var for a in self._args), dict((k,v.var) for k,v in self._kwargs.iteritems()))
 
 @register.tag
 def resolve(parser, token):
