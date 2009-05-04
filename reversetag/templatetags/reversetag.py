@@ -168,7 +168,7 @@ def reverse(parser, token):
           since a partially reversed URL can not be output directly but only 
           be used as the ``view`` argument to another invocation of 
           ``reverse``.
-    Note: The "last" invocation MUST NOT specify the ``partial`` 
+    Note: The "last" invocation MUST NOT specify ``partial`` 
     """
     bits = token.contents.split(' ')
     if len(bits) < 2:
