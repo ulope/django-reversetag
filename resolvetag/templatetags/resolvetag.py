@@ -134,7 +134,7 @@ def resolve(parser, token):
     keyword arguments in the URL. All arguments for the URL must be present 
     unless you use the ``partial`` form of ``resolve`` which is described 
     below.
-    If you'd like to store the url in a ``context`` variable instead of 
+    If you'd like to store the resulting url in a ``context`` variable instead of 
     directly displaying it you can use the optional ``as varname`` argument.
 
     For example if you have a view ``app_name.client`` taking client's id and
@@ -170,7 +170,8 @@ def resolve(parser, token):
     Note: When using the partial keyword the ``as varname`` clause is required
           since a partially resolved URL can not be output directly but only 
           be used as the ``view`` argument to another invocation of 
-          ``resolve``. 
+          ``resolve``.
+    Note: The "last" invocation MUST NOT specify the ``partial`` 
     """
     bits = token.contents.split(' ')
     if len(bits) < 2:
