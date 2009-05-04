@@ -4,21 +4,18 @@ from django.utils.encoding import smart_str, smart_unicode
 
 register = Library()
 
-def _merge(view, args, kwargs):
+def _merge(partial, args, kwargs):
     """Merge arguments with PartialReverseNode's"""
     # If view is a PartialReverseNode update arguments with its args and kwargs
-    if isinstance(view, PartialReverseNode):
-        args_ = view.args[:]
+    if isinstance(partial, PartialReverseNode):
+        args_ = partial.args[:]
         args_.extend(args)
         args = args_
-        kwargs_ = view.kwargs.copy()
+        kwargs_ = partial.kwargs.copy()
         kwargs_.update(kwargs)
         kwargs = kwargs_
-        # the "real" view is inside the PartialReverseNode's view attribute
-        view = view.view
+        view = partial.view
     return view, args, kwargs
-
-
 
 class ReverseNode(Node):
     """Represents a to-be-reversed url"""
