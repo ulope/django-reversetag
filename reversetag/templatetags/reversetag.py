@@ -5,23 +5,23 @@ from django.utils.encoding import smart_str, smart_unicode
 register = Library()
 
 def _merge(view, args, kwargs):
-    """Merge arguments with PartialResolveNode's"""
-    # If view is a PartialResolveNode update arguments with its args and kwargs
-    if isinstance(view, PartialResolveNode):
+    """Merge arguments with PartialReverseNode's"""
+    # If view is a PartialReverseNode update arguments with its args and kwargs
+    if isinstance(view, PartialReverseNode):
         args_ = view.args[:]
         args_.extend(args)
         args = args_
         kwargs_ = view.kwargs.copy()
         kwargs_.update(kwargs)
         kwargs = kwargs_
-        # the "real" view is inside the PartialResolveNode's view attribute
+        # the "real" view is inside the PartialReverseNode's view attribute
         view = view.view
     return view, args, kwargs
 
 
 
-class ResolveNode(Node):
-    """Represents a to-be-resolved url"""
+class ReverseNode(Node):
+    """Represents a to-be-reversed url"""
     def __init__(self, view, args, kwargs, asvar):
         self.view = view
         self.args = args
@@ -37,7 +37,7 @@ class ResolveNode(Node):
         if not view:
             # variable not in context
             if settings.TEMPLATE_DEBUG:
-                return "[Missing %r. Cannot resolve.]" % self.view.var
+                return "[Missing %r. Cannot reverse.]" % self.view.var
             return ""
 
         view, args, kwargs = _merge(view, args, kwargs)
@@ -46,7 +46,7 @@ class ResolveNode(Node):
         # Try to look up the URL twice: once given the view name, and again
         # relative to what we guess is the "main" app. If they both fail, 
         # re-raise the NoReverseMatch unless we're using the 
-        # {% resolve ... as var %} construct in which cause return nothing.
+        # {% reverse ... as var %} construct in which cause return nothing.
         url = ''
         try:
             url = reverse(view, args=args, kwargs=kwargs)
@@ -68,12 +68,12 @@ class ResolveNode(Node):
             return url
     
     def __repr__(self):
-        return "<ResolveNode: resolve %r with args %r and kwargs %r>" % \
+        return "<ReverseNode: reverse %r with args %r and kwargs %r>" % \
             (self.view.var, (a.var for a in self.args), dict((k,v.var) for k,v in self.kwargs.iteritems()))
 
 
-class PartialResolveNode(Node):
-    """Represents a partial to-be-resolved url"""
+class PartialReverseNode(Node):
+    """Represents a partial to-be-reversed url"""
     def __init__(self, view, args, kwargs, asvar):
         # Store in "private" attributes so we can re-resolve variables in loops
         self._view = view
@@ -91,7 +91,7 @@ class PartialResolveNode(Node):
         if not self.view:
             # variable not in context
             if settings.TEMPLATE_DEBUG:
-                return "[Missing %r. Cannot resolve.]" % self.view
+                return "[Missing %r. Cannot reverse.]" % self.view
             return ""
 
         self.view, self.args, self.kwargs = _merge(self.view, self.args, self.kwargs)
@@ -100,39 +100,39 @@ class PartialResolveNode(Node):
             context[self.asvar] = self
             return ''
         else:
-            raise TemplateSyntaxError("When using 'partial' the 'resolve' tag"
+            raise TemplateSyntaxError("When using 'partial' the 'reverse' tag"
                                       " requires 'as varname' argument")
 
     def __unicode__(self):
-        # don't output partially resolved urls
+        # don't output partially reversed urls
         if settings.TEMPLATE_DEBUG:
             return "[Cannot render: %r. You have to use it through " \
-                   "the 'resolve' tag.]" % self
+                   "the 'reverse' tag.]" % self
         else:
             return '' # fail silently
 
     def __repr__(self):
-        return "<PartialResolveNode: resolve %r with args %r " \
+        return "<PartialReverseNode: reverse %r with args %r " \
                "and kwargs %r>" % (self._view.var, (a.var for a in self._args), dict((k,v.var) for k,v in self._kwargs.iteritems()))
 
 @register.tag
-def resolve(parser, token):
+def reverse(parser, token):
     """
     Returns an absolute URL matching given view with its parameters.
 
     This is a way to define links that aren't tied to a particular URL
     configuration::
 
-        {% resolve "path.to.some_view" "arg1","arg2" [as varname] %}
+        {% reverse "path.to.some_view" "arg1","arg2" [as varname] %}
     or:
-        {% resolve "path.to.some_view" name1="value1" [as varname] %}
+        {% reverse "path.to.some_view" name1="value1" [as varname] %}
 
     The first argument is a path to a view or a view name. It can be an 
     absolute python path or just ``app_name.view_name`` without the project 
     name if the view is located inside the project.  Other arguments are 
     comma-separated values that will be filled in place of positional and 
     keyword arguments in the URL. All arguments for the URL must be present 
-    unless you use the ``partial`` form of ``resolve`` which is described 
+    unless you use the ``partial`` form of ``reverse`` which is described 
     below.
     If you'd like to store the resulting url in a ``context`` variable instead of 
     directly displaying it you can use the optional ``as varname`` argument.
@@ -149,7 +149,7 @@ def resolve(parser, token):
 
     then in a template you can create a link for a certain client like this::
 
-        {% resolve "app_name.client" client.id %}
+        {% reverse "app_name.client" client.id %}
 
     The URL will look like ``/clients/client/123/``.
     
@@ -157,20 +157,20 @@ def resolve(parser, token):
     Advanced usage
     ~~~~~~~~~~~~~~
     
-    The ``resolve`` tag also supports a more advanced mode of operation
-    called "partial resolving". This allows you to resolve an URL in two or 
+    The ``reverse`` tag also supports a more advanced mode of operation
+    called "partial resolving". This allows you to reverse an URL in two or 
     more stages. Each time only specifying some of required view arguments
     until the URL is resolved.
     Syntax:
     
-        {% resolve partial "path.to.some_view" "arg1" key1="value1" as varname %}
+        {% reverse partial "path.to.some_view" "arg1" key1="value1" as varname %}
     
     TODO: add more doc and usage examples
     
     Note: When using the partial keyword the ``as varname`` clause is required
-          since a partially resolved URL can not be output directly but only 
+          since a partially reversed URL can not be output directly but only 
           be used as the ``view`` argument to another invocation of 
-          ``resolve``.
+          ``reverse``.
     Note: The "last" invocation MUST NOT specify the ``partial`` 
     """
     bits = token.contents.split(' ')
@@ -208,6 +208,6 @@ def resolve(parser, token):
             raise TemplateSyntaxError("When using 'partial' '%s' requires"
                                       " (as varname) argument" % bits[0])
     if partial:
-        return PartialResolveNode(view, args, kwargs, asvar)
-    return ResolveNode(view, args, kwargs, asvar)
+        return PartialReverseNode(view, args, kwargs, asvar)
+    return ReverseNode(view, args, kwargs, asvar)
 

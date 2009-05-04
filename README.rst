@@ -1,8 +1,8 @@
 =================
-Django Resolvetag
+Django Reversetag
 =================
 
-Django Resolvetag is an enhanced replacement for Django's builtin url_
+Django Reversetag is an enhanced replacement for Django's builtin url_
 template tag.
 
 .. _url: http://docs.djangoproject.com/en/dev/ref/templates/builtins/#url
@@ -12,8 +12,8 @@ Features
 --------
 
 - Consistent syntax ("string literals" and *variables*)
-- Ability to resolve view names stored in context variables
-- Partial resolving (see *Advanced Usage* below)
+- Ability to reverse view names stored in context variables
+- Partial reversing (see *Advanced Usage* below)
 
 ------------
 Dependencies
@@ -27,12 +27,12 @@ Installation
 
 (TODO: add setup.py)
 
-To use resolvetag in your Django project it needs to be accessible by your 
+To use reversetag in your Django project it needs to be accessible by your 
 Python installation. The simplest way to achieve that is by putting the
-``resolvetag`` directory into your Python installation's ``site-packages``
+``reversetag`` directory into your Python installation's ``site-packages``
 directory.
 
-Then all that is left to do is adding ``resolvetag`` to ``INSTALLED_APPS`` in 
+Then all that is left to do is adding ``reversetag`` to ``INSTALLED_APPS`` in 
 your projets ``settings.py``. Example::
 
 	INSTALLED_APPS = (
@@ -41,7 +41,7 @@ your projets ``settings.py``. Example::
 		'django.contrib.sessions',
 		'django.contrib.sites',
 		'django.contrib.admin',
-		'resolvetag',                  # <-- add this
+		'reversetag',                  # <-- add this
 		'your.other.app',
 	)
 
@@ -52,19 +52,19 @@ Usage
 Basic usage is pretty similar to the default ``url`` tag.
 Examples::
 
-	{% resolve "app.views.view" %}
+	{% reverse "app.views.view" %}
 
-	{% resolve "sample_view" %}
+	{% reverse "sample_view" %}
 
-This will try to resolve
+This will try to reverse
 	a) a view "view" in the app.views module
  	b) a named view "sample_view".
 
-Note that you _must_ quote the view name (regardles if you're using named views or not) since the resolve tag is "variable aware" and will treat any unquoted view name arguments as template variables and try to resolve them. Example::
+Note that you _must_ quote the view name (regardles if you're using named views or not) since reversetag is "variable aware" and will treat any unquoted view name arguments as template variables and try to reverse them. Example::
 
-	{% resolve next_page_view %}
+	{% reverse next_page_view %}
 	
-In this example resolvetag will look up the template variable ``next_page_view`` and resolve the url to whatever is in stored in that variable.
+In this example reversetag will look up the template variable ``next_page_view`` and reverse the url to whatever is in stored in that variable.
 
 Arguments
 ---------
