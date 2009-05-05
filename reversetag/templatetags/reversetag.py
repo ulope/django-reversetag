@@ -4,40 +4,52 @@ from django.utils.encoding import smart_str, smart_unicode
 
 register = Library()
 
-def _merge(partial, args, kwargs):
-    """Merge arguments with PartialReverseNode's"""
-    # If view is a PartialReverseNode update arguments with its args and kwargs
-    if isinstance(partial, PartialReverseNode):
-        args_ = partial.args[:]
-        args_.extend(args)
-        args = args_
-        kwargs_ = partial.kwargs.copy()
-        kwargs_.update(kwargs)
-        kwargs = kwargs_
-        view = partial.view
-    return view, args, kwargs
-
-class ReverseNode(Node):
-    """Represents a to-be-reversed url"""
+class ReverseBaseNode(Node):
+    """Base class for ReverseNodes"""
     def __init__(self, view, args, kwargs, asvar):
-        self.view = view
-        self.args = args
-        self.kwargs = kwargs
-        self.asvar = asvar
-    
-    def render(self, context):
-        view = self.view.resolve(context)
-        args = [arg.resolve(context) for arg in self.args]
-        kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
-                       for k, v in self.kwargs.items()])
+        # Store in "private" attributes so we can re-resolve variables in loops
+        self._view = view
+        self._args = args
+        self._kwargs = kwargs
 
-        if not view:
+        self.asvar = asvar
+
+    def prepare_render(self, context):
+        self.view = self._view.resolve(context)
+        self.args = [arg.resolve(context) for arg in self._args]
+        self.kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
+                       for k, v in self._kwargs.items()])
+
+        if not self.view:
             # variable not in context
             if settings.TEMPLATE_DEBUG:
-                return "[Missing %r. Cannot reverse.]" % self.view.var
+                return "[Missing %r. Cannot reverse.]" % self._view.var
             return ""
 
-        view, args, kwargs = _merge(view, args, kwargs)
+        self._merge(self.view)
+
+
+    def _merge(self, partial):
+        """Merge arguments with (maybe present) PartialReverseNode's"""
+        # If self.view is a PartialReverseNode update self with its args and kwargs
+        if isinstance(partial, PartialReverseNode):
+            args = partial.args[:]
+            args.extend(self.args)
+            self.args = args
+            kwargs = partial.kwargs.copy()
+            kwargs.update(self.kwargs)
+            self.kwargs = kwargs
+            self.view = partial.view
+
+    def __repr__(self):
+        return "<%s: reverse %r with args %r and kwargs %r>" % \
+            (self.__class__.__name__, self._view.var, [a.var for a in self._args], dict((k,v.var) for k,v in self._kwargs.iteritems()))
+        
+
+class ReverseNode(ReverseBaseNode):
+    """Represents a to-be-reversed url"""
+    def render(self, context):
+        self.prepare_render(context)
 
         from django.core.urlresolvers import reverse, NoReverseMatch
         # Try to look up the URL twice: once given the view name, and again
@@ -46,12 +58,12 @@ class ReverseNode(Node):
         # {% reverse ... as var %} construct in which cause return nothing.
         url = ''
         try:
-            url = reverse(view, args=args, kwargs=kwargs)
+            url = reverse(self.view, args=self.args, kwargs=self.kwargs)
         except NoReverseMatch, exc:
             project_name = settings.SETTINGS_MODULE.split('.')[0]
             try:
-                url = reverse(project_name + '.' + view,
-                              args=args, kwargs=kwargs)
+                url = reverse(project_name + '.' + self.view,
+                              args=self.args, kwargs=self.kwargs)
             except NoReverseMatch:
                 if self.asvar is None:
                     # reraise the original NoReverseMatch since the above is 
@@ -64,34 +76,10 @@ class ReverseNode(Node):
         else:
             return url
     
-    def __repr__(self):
-        return "<ReverseNode: reverse %r with args %r and kwargs %r>" % \
-            (self.view.var, (a.var for a in self.args), dict((k,v.var) for k,v in self.kwargs.iteritems()))
-
-
-class PartialReverseNode(Node):
+class PartialReverseNode(ReverseBaseNode):
     """Represents a partial to-be-reversed url"""
-    def __init__(self, view, args, kwargs, asvar):
-        # Store in "private" attributes so we can re-resolve variables in loops
-        self._view = view
-        self._args = args
-        self._kwargs = kwargs
-
-        self.asvar = asvar
-
     def render(self, context):
-        self.view = self._view.resolve(context)
-        self.args = [arg.resolve(context) for arg in self._args]
-        self.kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
-                            for k, v in self._kwargs.items()])
-
-        if not self.view:
-            # variable not in context
-            if settings.TEMPLATE_DEBUG:
-                return "[Missing %r. Cannot reverse.]" % self.view
-            return ""
-
-        self.view, self.args, self.kwargs = _merge(self.view, self.args, self.kwargs)
+        self.prepare_render(context)
         
         if self.asvar:
             context[self.asvar] = self
@@ -107,10 +95,6 @@ class PartialReverseNode(Node):
                    "the 'reverse' tag.]" % self
         else:
             return '' # fail silently
-
-    def __repr__(self):
-        return "<PartialReverseNode: reverse %r with args %r " \
-               "and kwargs %r>" % (self._view.var, (a.var for a in self._args), dict((k,v.var) for k,v in self._kwargs.iteritems()))
 
 @register.tag
 def reverse(parser, token):
