@@ -25,12 +25,21 @@ Python 2.3+
 Installation
 ------------
 
-(TODO: add setup.py)
-
 To use reversetag in your Django project it needs to be accessible by your 
-Python installation. The simplest way to achieve that is by putting the
-``reversetag`` directory into your Python installation's ``site-packages``
-directory.
+Python installation. 
+
+The easy way:
+
+	#~ python setup.py install
+
+The manual way:
+
+Simply place the ``reversetag`` directory into your Python installation's 
+``site-packages`` directory.
+
+
+Django Setup
+------------
 
 Then all that is left to do is adding ``reversetag`` to ``INSTALLED_APPS`` in 
 your projets ``settings.py``. Example::
