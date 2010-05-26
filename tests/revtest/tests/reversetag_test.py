@@ -38,3 +38,8 @@ class ReversetagTest(TestCase):
 
         t3 = Template("""{% load reversetag %}{% reverse partial "URL3" as P3 %}{% reverse partial P3 x=1 as P3_1 %}{% reverse partial P3_1 y=2 as P3_2 %}{% reverse P3_2 z=3 %}""")
         self.assertEqual(t3.render(Context()), u"/T3/1/2/3/")
+
+    def test_loop(self):
+        t3 = Template("""{% load reversetag %}{% reverse partial "URL3" as P3 %}{% reverse partial P3 x=1 as P3_1 %}{% reverse partial P3_1 y=2 as P3_2 %}{% for VAR_X in values %}{% reverse P3_2 z=VAR_X %} {% endfor %}""")
+        self.assertEqual(t3.render(Context({'values': [3,4,5]})), u"/T3/1/2/3/ /T3/1/2/4/ /T3/1/2/5/ ")
+        
