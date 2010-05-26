@@ -1,74 +1,104 @@
 from django.conf import settings
-from django.template import Context, Library, Node, NodeList, Template, Variable
+from django.template import (Context, Library, Node, NodeList, 
+                             Template, Variable, FilterExpression)
 from django.utils.encoding import smart_str, smart_unicode
 
 register = Library()
 
+class Reversable(object):
+    def __init__(self, view, args, kwargs):
+        self.view = view
+        self.args = args
+        self.kwargs = kwargs
+
+    def update(self, args, kwargs):
+        self.args.extend(args)
+        self.kwargs.update(kwargs)
+    
+    def resolve(self, context):
+        """
+        Resolve the current 
+        """
+        view = self.view.resolve(context)
+        while isinstance(view, Reversable):
+            self.update(view.args, view.kwargs)
+            view = view.view
+            if isinstance(view, (Variable, FilterExpression)):
+                view = view.resolve(context)
+
+        args = [arg.resolve(context) for arg in self.args]
+        kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
+                       for k, v in self.kwargs.items()])
+        
+        return (view, args, kwargs)
+
+    
+    def reverse(self, context):
+        from django.core.urlresolvers import reverse, NoReverseMatch
+        # The following has been taken from django's url tag for 
+        # backwards compatibility: 
+        # Try to look up the URL twice: once given the view name, and 
+        # again relative to what we guess is the "main" app. If they 
+        # both fail, re-raise the NoReverseMatch unless we're using the 
+        # {% reverse ... as var %} construct in which cause return 
+        # nothing.
+        url = ''
+        view, args, kwargs = self.resolve(context)
+        if not view:
+            # view is empty or None so silently ignore for now
+            return ""
+        try:
+            url = reverse(view, args=args, 
+                          kwargs=kwargs)
+        except NoReverseMatch, exc:
+            project_name = settings.SETTINGS_MODULE.split('.')[0]
+            try:
+                url = reverse(project_name + '.' + view,
+                              args=args, kwargs=kwargs)
+            except NoReverseMatch:
+                # reraise the original NoReverseMatch since the above 
+                # is just a (failed, if we reach here) attempt to fix 
+                # things.
+                raise exc
+        return url
+        
+        
+    def __unicode__(self):
+        # don't output partially reversed urls
+        if settings.TEMPLATE_DEBUG:
+            return u"[Cannot render: %r. You have to use it through " \
+                   u"the 'reverse' tag.]" % self
+        else:
+            return u'' # fail silently
+
+    def __repr__(self):
+        return "<%s: reverse %r with args %r and kwargs %r>" % (
+                self.__class__.__name__, 
+                self.view.var, 
+                [a.var for a in self.args], 
+                dict((k,v.var) for k,v in self.kwargs.iteritems()))
+
 class ReverseBaseNode(Node):
     """Base class for ReverseNodes"""
     def __init__(self, view, args, kwargs, asvar):
-        # Store in "private" attributes so we can re-resolve variables in loops
-        self._view = view
-        self._args = args
-        self._kwargs = kwargs
-
+        self.reversable = Reversable(view, args, kwargs)
         self.asvar = asvar
 
-    def prepare_render(self, context):
-        self.view = self._view.resolve(context)
-        self.args = [arg.resolve(context) for arg in self._args]
-        self.kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
-                       for k, v in self._kwargs.items()])
-
-        if not self.view:
-            # variable not in context
-            if settings.TEMPLATE_DEBUG:
-                return "[Missing %r. Cannot reverse.]" % self._view.var
-            return ""
-
-        self._merge(self.view)
-
-
-    def _merge(self, partial):
-        """Merge arguments with (maybe present) PartialReverseNode's"""
-        # If self.view is a PartialReverseNode update self with its args and kwargs
-        if isinstance(partial, PartialReverseNode):
-            args = partial.args[:]
-            args.extend(self.args)
-            self.args = args
-            kwargs = partial.kwargs.copy()
-            kwargs.update(self.kwargs)
-            self.kwargs = kwargs
-            self.view = partial.view
-
     def __repr__(self):
-        return "<%s: reverse %r with args %r and kwargs %r>" % \
-            (self.__class__.__name__, self._view.var, [a.var for a in self._args], dict((k,v.var) for k,v in self._kwargs.iteritems()))
+        return repr(self.reversable)
         
 
 class ReverseNode(ReverseBaseNode):
     """Represents a to-be-reversed url"""
     def render(self, context):
-        self.prepare_render(context)
-
-        from django.core.urlresolvers import reverse, NoReverseMatch
-        # Try to look up the URL twice: once given the view name, and again
-        # relative to what we guess is the "main" app. If they both fail, 
-        # re-raise the NoReverseMatch unless we're using the 
-        # {% reverse ... as var %} construct in which cause return nothing.
+        from django.core.urlresolvers import NoReverseMatch
         url = ''
         try:
-            url = reverse(self.view, args=self.args, kwargs=self.kwargs)
-        except NoReverseMatch, exc:
-            project_name = settings.SETTINGS_MODULE.split('.')[0]
-            try:
-                url = reverse(project_name + '.' + self.view,
-                              args=self.args, kwargs=self.kwargs)
-            except NoReverseMatch:
-                if self.asvar is None:
-                    # reraise the original NoReverseMatch since the above is 
-                    # just a (failed, if we reach here) attempt to fix things.
-                    raise exc
+            url = self.reversable.reverse(context)
+        except NoReverseMatch:
+            if self.asvar is None:
+                # only re-raise if not using <reverse ... as bla>
+                raise
                     
         if self.asvar:
             context[self.asvar] = url
@@ -79,20 +109,19 @@ class ReverseNode(ReverseBaseNode):
 class PartialReverseNode(ReverseBaseNode):
     """Represents a partial to-be-reversed url"""
     def render(self, context):
-        self.prepare_render(context)
         
         if self.asvar:
-            context[self.asvar] = self
+            context[self.asvar] = self.reversable
             return ''
         else:
-            raise TemplateSyntaxError("When using 'partial' the 'reverse' tag"
-                                      " requires 'as varname' argument")
+            raise TemplateSyntaxError("When using 'partial' the " 
+                "'reverse' tag requires 'as varname' argument")
 
     def __unicode__(self):
         # don't output partially reversed urls
         if settings.TEMPLATE_DEBUG:
             return "[Cannot render: %r. You have to use it through " \
-                   "the 'reverse' tag.]" % self
+                "the 'reverse' tag.]" % self
         else:
             return '' # fail silently
 
