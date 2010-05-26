@@ -1,56 +1,56 @@
-Index: pagination/templatetags/pagination_tags.py
-===================================================================
---- pagination/templatetags/pagination_tags.py	(revision 50)
-+++ pagination/templatetags/pagination_tags.py	(working copy)
-@@ -203,6 +203,7 @@
-             'page_obj': page_obj,
-             'paginator': paginator,
-             'is_paginated': paginator.count > paginator.per_page,
-+            'pagination_view': context.get('pagination_view'),
-         }
-         if 'request' in context:
-             getvars = context['request'].GET.copy()
-Index: pagination/templates/pagination/pagination.html
-===================================================================
---- pagination/templates/pagination/pagination.html	(revision 50)
-+++ pagination/templates/pagination/pagination.html	(working copy)
-@@ -1,8 +1,13 @@
+diff --git a/pagination/templates/pagination/pagination.html b/pagination/templates/pagination/pagination.html
+index fe566a8..8497909 100644
+--- a/pagination/templates/pagination/pagination.html
++++ b/pagination/templates/pagination/pagination.html
+@@ -1,8 +1,12 @@
  {% if is_paginated %}
- {% load i18n %}
-+{% load reversetag %}
+-{% load i18n %}
++{% load i18n reverstag %}
  <div class="pagination">
      {% if page_obj.has_previous %}
--        <a href="?page={{ page_obj.previous_page_number }}{{ getvars }}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
-+		{% if pagination_view %}
-+			<a href="{% reverse pagination_view page=page_obj.previous_page_number %}{% if getvars %}?{{ getvars }}{% endif %}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
-+		{% else %}
-+        	<a href="?page={{ page_obj.previous_page_number }}{{ getvars }}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
-+		{% endif %}
+-        <a href="?page={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
++        {% if pagination_view %}
++            <a href="{% reverse pagination_view page=page_obj.previous_page_number %}{% if getvars %}?{{ getvars }}{% endif %}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
++        {% else %}
++            <a href="?page={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
++        {% endif %}
      {% else %}
          <span class="disabled prev">&lsaquo;&lsaquo; {% trans "previous" %}</span>
      {% endif %}
-@@ -11,14 +16,22 @@
+@@ -11,14 +15,22 @@
              {% ifequal page page_obj.number %}
                  <span class="current page">{{ page }}</span>
              {% else %}
--                <a href="?page={{ page }}{{ getvars }}" class="page">{{ page }}</a>
-+				{% if pagination_view %}
-+					<a href="{% reverse pagination_view page=page %}{% if getvars %}?{{ getvars }}{% endif %}" class="page">{{ page }}</a>
-+				{% else %}
-+		        	<a href="?page={{ page }}{{ getvars }}" class="page">{{ page }}</a>
-+				{% endif %}
+-                <a href="?page={{ page }}{{ getvars }}{{ hashtag }}" class="page">{{ page }}</a>
++                {% if pagination_view %}
++                    <a href="{% reverse pagination_view page=page %}{% if getvars %}?{{ getvars }}{% endif %}" class="page">{{ page }}</a>
++                {% else %}
++                    <a href="?page={{ page }}{{ getvars }}{{ hashtag }}" class="page">{{ page }}</a>
++                {% endif %}
              {% endifequal %}
          {% else %}
              ...
          {% endif %}
      {% endfor %}
      {% if page_obj.has_next %}
--        <a href="?page={{ page_obj.next_page_number }}{{ getvars }}" class="next">{% trans "next" %} &rsaquo;&rsaquo;</a>
-+		{% if pagination_view %}
-+			<a href="{% reverse pagination_view page=page_obj.next_page_number %}{% if getvars %}?{{ getvars }}{% endif %}" class="next">{% trans "next" %} &rsaquo;&rsaquo;</a>
-+		{% else %}
-+			<a href="?page={{ page_obj.next_page_number }}{{ getvars }}" class="next">{% trans "next" %} &rsaquo;&rsaquo;</a>
-+		{% endif %}
+-        <a href="?page={{ page_obj.next_page_number }}{{ getvars }}{{ hashtag }}" class="next">{% trans "next" %} &rsaquo;&rsaquo;</a>
++        {% if pagination_view %}
++            <a href="{% reverse pagination_view page=page_obj.next_page_number %}{% if getvars %}?{{ getvars }}{% endif %}" class="next">{% trans "next" %} &rsaquo;&rsaquo;</a>
++        {% else %}
++            <a href="?page={{ page_obj.next_page_number }}{{ getvars }}{{ hashtag }}" class="next">{% trans "next" %} &rsaquo;&rsaquo;</a>
++        {% endif %}
      {% else %}
          <span class="disabled next">{% trans "next" %} &rsaquo;&rsaquo;</span>
      {% endif %}
+diff --git a/pagination/templatetags/pagination_tags.py b/pagination/templatetags/pagination_tags.py
+index ae843b1..0dfe248 100644
+--- a/pagination/templatetags/pagination_tags.py
++++ b/pagination/templatetags/pagination_tags.py
+@@ -212,6 +212,7 @@ def paginate(context, window=DEFAULT_WINDOW, hashtag=''):
+             'paginator': paginator,
+             'hashtag': hashtag,
+             'is_paginated': paginator.count > paginator.per_page,
++            'pagination_view': context.get('pagination_view'),
+         }
+         if 'request' in context:
+             getvars = context['request'].GET.copy()
