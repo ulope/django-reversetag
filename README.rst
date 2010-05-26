@@ -30,12 +30,13 @@ Python installation.
 
 The easy way:
 
-	#~ python setup.py install
+	#~ pip install django-reversetag
+	(or use *easy_install* if you must)
 
 The manual way:
 
-Simply place the ``reversetag`` directory into your Python installation's 
-``site-packages`` directory.
+Simply place the ``reversetag`` directory somewhere that is on your 
+$PYTHONPATH.
 
 
 Django Setup

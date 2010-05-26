@@ -4,7 +4,7 @@ django-pagination Patch
 This patch adds support for reversetag to django-pagination_. This means it
 will produce nice URLs without query-string cruft.
 
-.. _django-pagination: http://code.google.com/p/django-pagination/
+.. _django-pagination: http://github.com/ericflo/django-pagination/
 
 Usage
 -----
@@ -12,7 +12,7 @@ Usage
 Apply the patch to your local version of django-pagination.
 ::
 
-	~/django-pagination # patch -p0 < ~/reversetag-django-pagination.diff
+	~/django-pagination # patch -p1 < ~/reversetag-django-pagination.diff
 
 Then you can use reversetag with pagination as follows::
 
