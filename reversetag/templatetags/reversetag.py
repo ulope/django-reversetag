@@ -1,40 +1,49 @@
 from django.conf import settings
-from django.template import (Context, Library, Node, NodeList, 
-                             Template, Variable, FilterExpression)
-from django.utils.encoding import smart_str, smart_unicode
+from django.template import (Library, Node, TemplateSyntaxError)
+from django.utils.encoding import smart_str
 
 register = Library()
 
-class Reversable(object):
+class Reversible(object):
     def __init__(self, view, args, kwargs):
         self.view = view
         self.args = args
         self.kwargs = kwargs
+        self.resolved_view = None
+        self.resolved_args = []
+        self.resolved_kwargs = {}
 
-    def update(self, args, kwargs):
-        self.args.extend(args)
-        self.kwargs.update(kwargs)
-    
     def resolve(self, context):
-        """
-        Resolve the current 
-        """
-        view = self.view.resolve(context)
-        while isinstance(view, Reversable):
-            self.update(view.args, view.kwargs)
-            view = view.view
-            if isinstance(view, (Variable, FilterExpression)):
-                view = view.resolve(context)
-
-        args = [arg.resolve(context) for arg in self.args]
-        kwargs = dict([(smart_str(k,'ascii'), v.resolve(context))
-                       for k, v in self.kwargs.items()])
+        self.resolved_view = self.view.resolve(context)
+        self.resolved_args = [arg.resolve(context) 
+                              for arg in self.args]
+        self.resolved_kwargs = dict(
+            [(smart_str(k,'ascii'), v.resolve(context))
+             for k, v in self.kwargs.items()])
+    
+    def merge(self, reversible=None):
+        """Walk down the (maybe existing) stack of Rerversibles."""
         
-        return (view, args, kwargs)
-
+        if reversible is None:
+            reversible = self
+        if isinstance(reversible.resolved_view, Reversible): 
+            view, args, kwargs = reversible.merge(reversible.resolved_view)
+            args.extend(reversible.resolved_args)
+            kwargs.update(reversible.resolved_kwargs)
+            return view, args, kwargs
+        return (reversible.resolved_view, 
+                reversible.resolved_args, 
+                reversible.resolved_kwargs,
+            )
     
     def reverse(self, context):
         from django.core.urlresolvers import reverse, NoReverseMatch
+        url = ''
+        view, args, kwargs = self.merge()
+        if not view:
+            # view is empty or None so silently ignore for now
+            return ""
+
         # The following has been taken from django's url tag for 
         # backwards compatibility: 
         # Try to look up the URL twice: once given the view name, and 
@@ -42,11 +51,6 @@ class Reversable(object):
         # both fail, re-raise the NoReverseMatch unless we're using the 
         # {% reverse ... as var %} construct in which cause return 
         # nothing.
-        url = ''
-        view, args, kwargs = self.resolve(context)
-        if not view:
-            # view is empty or None so silently ignore for now
-            return ""
         try:
             url = reverse(view, args=args, 
                           kwargs=kwargs)
@@ -81,20 +85,21 @@ class Reversable(object):
 class ReverseBaseNode(Node):
     """Base class for ReverseNodes"""
     def __init__(self, view, args, kwargs, asvar):
-        self.reversable = Reversable(view, args, kwargs)
+        self.reversible = Reversible(view, args, kwargs)
         self.asvar = asvar
 
     def __repr__(self):
-        return repr(self.reversable)
+        return repr(self.reversible)
         
 
 class ReverseNode(ReverseBaseNode):
     """Represents a to-be-reversed url"""
     def render(self, context):
         from django.core.urlresolvers import NoReverseMatch
+        self.reversible.resolve(context)
         url = ''
         try:
-            url = self.reversable.reverse(context)
+            url = self.reversible.reverse(context)
         except NoReverseMatch:
             if self.asvar is None:
                 # only re-raise if not using <reverse ... as bla>
@@ -109,9 +114,10 @@ class ReverseNode(ReverseBaseNode):
 class PartialReverseNode(ReverseBaseNode):
     """Represents a partial to-be-reversed url"""
     def render(self, context):
+        self.reversible.resolve(context)
         
         if self.asvar:
-            context[self.asvar] = self.reversable
+            context[self.asvar] = self.reversible
             return ''
         else:
             raise TemplateSyntaxError("When using 'partial' the " 
