@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(
     name = "django-reversetag",
-    version = "0.3",
+    version = "0.3.1",
     packages = find_packages(),
     author = "Ulrich Petri",
     author_email = "mail@ulo.pe",
