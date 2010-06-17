@@ -43,7 +43,9 @@ Django Setup
 ------------
 
 Then all that is left to do is adding ``reversetag`` to ``INSTALLED_APPS`` in 
-your projets ``settings.py``. Example::
+your projets ``settings.py``.
+
+Example::
 
 	INSTALLED_APPS = (
 		'django.contrib.auth',
@@ -60,7 +62,8 @@ Usage
 -----
 
 Basic usage is pretty similar to the default ``url`` tag.
-Examples::
+
+Example::
 
 	{% reverse "app.views.view" %}
 
@@ -70,7 +73,7 @@ This will try to reverse
 	a) a view "view" in the app.views module
  	b) a named view "sample_view".
 
-Note that you _must_ quote the view name (regardles if you're using named
+Note that you **must** quote the view name (regardles if you're using named
 views or not) since reversetag is "variable aware" and will treat any unquoted
 view name arguments as template variables and try to reverse them. Example::
 
@@ -84,7 +87,9 @@ Arguments
 ---------
 
 Of course it is also possible to provide arguments for views that require
-them. Example::
+them. 
+
+Example::
 
 	{% reverse "sample_view" "arg1","arg2" %}
 
