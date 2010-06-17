@@ -57,6 +57,11 @@ Example::
 		'your.other.app',
 	)
 
+To use the tag in one of your templates you have to load it in the template 
+like so::
+
+    {% load reversetag %}
+
 -----
 Usage
 -----
@@ -140,11 +145,13 @@ Example::
 	- /urls.py -
 	
 	- template.html -
+	{% load reversetag %}
 	{% reverse partial "paginatable_view" as this_page %}
 	{% include pagination.html %}
 	- /template.html -
 	
 	- pagination.html -
+	{% load reversetag %}
 	<a href="{% reverse this_page page=2 %}">next page</a>
 	- /pagination.html -
 
