@@ -5,7 +5,7 @@ index fe566a8..8497909 100644
 @@ -1,8 +1,12 @@
  {% if is_paginated %}
 -{% load i18n %}
-+{% load i18n reverstag %}
++{% load i18n reversetag %}
  <div class="pagination">
      {% if page_obj.has_previous %}
 -        <a href="?page={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}" class="prev">&lsaquo;&lsaquo; {% trans "previous" %}</a>
